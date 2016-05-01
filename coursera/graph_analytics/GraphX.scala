@@ -1,4 +1,4 @@
-// Databricks notebook source exported at Sun, 1 May 2016 18:18:21 UTC
+// Databricks notebook source exported at Sun, 1 May 2016 20:14:00 UTC
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
@@ -39,6 +39,28 @@ val e5 = metrosGraph.edges.take(5) // take 5 edges
 val dst1 = metrosGraph.edges.filter(_.srcId == 1).map(_.dstId).collect() // get destination vertices reached from vertex 1
 val src103 = metrosGraph.edges.filter(_.dstId == 103).map(_.srcId).collect() // get source vertices that reach vertex 103
 
+
+// COMMAND ----------
+
+metrosGraph.numEdges // print number of edges
+metrosGraph.numVertices // print number of vertices (metros + countries)
+
+// define utility type and functions
+type VertexDegree = (VertexId, Int)
+def max(a: VertexDegree, b: VertexDegree) = if (a._2 > b._2) a else b
+def min(a: VertexDegree, b: VertexDegree) = if (a._2 <= b._2) a else b
+
+metrosGraph.outDegrees.reduce(max) // every metropolitis has one country
+metrosGraph.vertices.filter(_._1 == 43).collect()
+
+metrosGraph.inDegrees.reduce(max) // get the country with more metropolis
+metrosGraph.vertices.filter(_._1 == 108).collect()
+
+metrosGraph.outDegrees.filter(_._2 <= 1).count() // number of vertices with one outgoing edge is equals to number of metropolis (65)
+metrosGraph.degrees.reduce(max) // get the vertex with more connections (inbound + outbound): connectedness
+
+// build a degree histogram for the countries to get number of countries with 1 metro, number of countries with 2 metros, ...
+metrosGraph.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupByKey.map(x => (x._1, x._2.size)).sortBy(_._1).collect()
 
 // COMMAND ----------
 
