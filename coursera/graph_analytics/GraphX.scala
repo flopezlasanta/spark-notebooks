@@ -1,4 +1,4 @@
-// Databricks notebook source exported at Sun, 1 May 2016 20:14:00 UTC
+// Databricks notebook source exported at Mon, 2 May 2016 12:30:00 UTC
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
@@ -59,9 +59,26 @@ metrosGraph.vertices.filter(_._1 == 108).collect()
 metrosGraph.outDegrees.filter(_._2 <= 1).count() // number of vertices with one outgoing edge is equals to number of metropolis (65)
 metrosGraph.degrees.reduce(max) // get the vertex with more connections (inbound + outbound): connectedness
 
-// build a degree histogram for the countries to get number of countries with 1 metro, number of countries with 2 metros, ...
-metrosGraph.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupByKey.map(x => (x._1, x._2.size)).sortBy(_._1).collect()
+// build a degree histogram for the countries to get number of countries (x) with 1 metro (1, x), number of countries (y) with 2 metros (2, y), ... where x, y are the degree
+val net = metrosGraph.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupByKey.map(x => (x._1, x._2.size)).sortBy(_._1).collect()
 
 // COMMAND ----------
 
+import breeze.linalg._
+//import breeze.plot._ // not working in Databricks thus another approach is used for plotting, see below
 
+// define a function to calculate the degree histogram (same as before thus no need to recalculate, just use net)
+def degreeHistogram(net: Graph[PlaceNode, Int]): Array[(Int, Int)] = net.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupByKey.map(x => (x._1, x._2.size)).sortBy(_._1).collect()
+
+// calculate probability distribution
+val nn = metrosGraph.vertices.filter(_._1 >= 100).count() // total number of countries
+val degreeDistribution = net.map { case (degree, n) => (degree, n.toDouble / nn) }
+
+//val x = new DenseVector(degreeDistribution map (_._1.toDouble))
+//val y = new DenseVector(degreeDistribution map (_._2))
+
+// plot degree distribution by transforming to a dataframe to use Databricks plotting capabilities
+case class DegreeDistribution(degree: Int, distribution: Double)
+val degreeDistributionDF = sc.parallelize(degreeDistribution.map { case (degree, distribution) => DegreeDistribution(degree, distribution)}).toDF()
+degreeDistributionDF.registerTempTable("degree_distribution_table")
+display(sqlContext.sql("select * from degree_distribution_table"))
