@@ -1,4 +1,4 @@
-// Databricks notebook source exported at Mon, 2 May 2016 12:30:00 UTC
+// Databricks notebook source exported at Wed, 4 May 2016 09:45:58 UTC
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
@@ -64,13 +64,13 @@ val net = metrosGraph.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupBy
 
 // COMMAND ----------
 
-import breeze.linalg._
+//import breeze.linalg._ // not really used, see below
 //import breeze.plot._ // not working in Databricks thus another approach is used for plotting, see below
 
 // define a function to calculate the degree histogram (same as before thus no need to recalculate, just use net)
 def degreeHistogram(net: Graph[PlaceNode, Int]): Array[(Int, Int)] = net.degrees.filter(_._1 >= 100).map(x => (x._2, x._1)).groupByKey.map(x => (x._1, x._2.size)).sortBy(_._1).collect()
 
-// calculate probability distribution
+// calculate probability distribution                  
 val nn = metrosGraph.vertices.filter(_._1 >= 100).count() // total number of countries
 val degreeDistribution = net.map { case (degree, n) => (degree, n.toDouble / nn) }
 
@@ -78,7 +78,15 @@ val degreeDistribution = net.map { case (degree, n) => (degree, n.toDouble / nn)
 //val y = new DenseVector(degreeDistribution map (_._2))
 
 // plot degree distribution by transforming to a dataframe to use Databricks plotting capabilities
+val ddLast = degreeDistribution.last._1 // take last degree
+val ddMap = degreeDistribution.toMap
+val ddHist = (for (i <- 0 to ddLast) yield { if (ddMap.contains(i)) (i, ddMap(i)) else (i, 0.0) }).toArray
+
 case class DegreeDistribution(degree: Int, distribution: Double)
-val degreeDistributionDF = sc.parallelize(degreeDistribution.map { case (degree, distribution) => DegreeDistribution(degree, distribution)}).toDF()
-degreeDistributionDF.registerTempTable("degree_distribution_table")
+val ddDF = sc.parallelize(ddHist.map { case (degree, distribution) => DegreeDistribution(degree, distribution)}).toDF()
+ddDF.registerTempTable("degree_distribution_table")
 display(sqlContext.sql("select * from degree_distribution_table"))
+
+// COMMAND ----------
+
+
