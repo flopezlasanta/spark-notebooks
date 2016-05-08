@@ -1,4 +1,4 @@
-// Databricks notebook source exported at Sun, 8 May 2016 12:38:05 UTC
+// Databricks notebook source exported at Sun, 8 May 2016 16:00:03 UTC
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
@@ -115,7 +115,8 @@ display(sqlContext.sql("select * from degree_distribution_table"))
 import java.util.Locale
 
 var countries:Map[String, String] = Map()
-for (iso <- Locale.getISOCountries()) countries = countries ++ Map(new Locale("", iso).getDisplayCountry() -> new Locale("", iso).getISO3Country())
+for (iso <- Locale.getISOCountries())
+  countries ++= Map(new Locale("", iso).getDisplayCountry() -> new Locale("", iso).getISO3Country())
 
 def iso(country:String) = countries(country)
 
@@ -139,18 +140,36 @@ val countriesAgg: VertexRDD[Vertex] = mccGraph.aggregateMessages[Vertex](
   t => { if (t.dstAttr.entity == "country") t.sendToDst(Vertex(t.dstAttr.name, t.srcAttr.population, t.dstAttr.entity)) },
   (a, b) => Vertex(a.name, a.population + b.population, a.entity)
 )
-val mccGraphMC = mccGraph.joinVertices(countriesAgg)((id, a, b) => b)
+val mccGraphAggC = mccGraph.joinVertices(countriesAgg)((id, a, b) => b)
 
 // goal: aggregate population from countries to continents
 // to destination vertex sends a message with 3 values: Vertex = (dst name, src population, dst entity)
-val continentsAgg: VertexRDD[Vertex] = mccGraph.aggregateMessages[Vertex](
+val continentsAgg: VertexRDD[Vertex] = mccGraphAggC.aggregateMessages[Vertex](
   t => { if (t.dstAttr.entity == "continent") t.sendToDst(Vertex(t.dstAttr.name, t.srcAttr.population, t.dstAttr.entity)) },
   (a, b) => Vertex(a.name, a.population + b.population, a.entity)
 )
-val mccGraphMCC = mccGraph.joinVertices(continentsAgg)((id, a, b) => b)
+val mccGraphAggCC = mccGraphAggC.joinVertices(continentsAgg)((id, a, b) => b)
 
-val mccGF = GraphFrame.fromGraphX(mccGraphMCC)
-display(mccGF.vertices)
+//val mccGF = GraphFrame.fromGraphX(mccGraphMCC)
+//display(mccGF.vertices)
+
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.{StructType,StructField,StringType,LongType}
+
+val countryRows = mccGraphAggCC.vertices.
+  filter{ case (id, Vertex(name, population, entity)) => entity == "country" }.
+  map{ case (id, Vertex(name, population, entity)) => Row(name, population.toLong) }.collect()
+
+object countrySchema {
+      val countryCode = StructField("countryCode", StringType)
+      val population = StructField("population", LongType)
+      val struct = StructType(Array(countryCode, population))
+}
+
+// COMMAND ----------
+
+val worldDF = sqlContext.createDataFrame(sc.parallelize(countryRows), countrySchema.struct)
+display(worldDF)
 
 // COMMAND ----------
 
