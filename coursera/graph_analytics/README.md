@@ -58,25 +58,33 @@ import java.util.Locale
 import java.util.Locale
 
 var countries:Map[String, String] = Map()
-for (iso <- Locale.getISOCountries()) countries ++= Map(new Locale("", iso).getDisplayCountry() -> new Locale("", iso).getISO3Country())
+for (iso <- Locale.getISOCountries())
+    countries ++= Map(new Locale("", iso).getDisplayCountry() -> new Locale("", iso).getISO3Country())
 
 def iso(country:String) = countries(country)
 ```
 
 Function `iso(String):String` is used later one to replace country names by country codes when building the RDD for countries.
 
+Once the graph is built, and the population for the countries is calculated, retrieve country information and with a custom schema create a new Dataframe to be displayed:
+
+```scala
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{StructType,StructField,StringType,LongType}
 
-val input = Array(Row("USA", 1000L),Row("JPN", 23L),Row("GBR", 23L),Row("FRA", 21L))
-val worldRDD = sc.parallelize(input)
-object worldSchema {
+val countryRows = mccGraphAggCC.vertices.
+  filter{ case (id, Vertex(name, population, entity)) => entity == "country" }.
+  map{ case (id, Vertex(name, population, entity)) => Row(name, population.toLong) }.collect()
+
+object countrySchema {
       val countryCode = StructField("countryCode", StringType)
       val population = StructField("population", LongType)
       val struct = StructType(Array(countryCode, population))
 }
 
-val worldDF = sqlContext.createDataFrame(worldRDD, worldSchema.struct)
+val worldDF = sqlContext.createDataFrame(sc.parallelize(countryRows), countrySchema.struct)
+display(worldDF)
+```
 
 ## TODO
 
