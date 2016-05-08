@@ -24,11 +24,11 @@ import org.graphframes._
 val metroCountryContinentGF = GraphFrame.fromGraphX(metroCountryContinentGraph)
 ```
 
-### How to aggregate population from metropolits level to continent level
+### How to aggregate population: from metropolits to country and then to continent level
 
 In the example mentioned there are 3 vertex types: metropolis, country, and continent. Population is given at metropolis level only. However each metro belongs to a country (is linked to), and each country to a continent (is linked to). Therefore it is feasible to obtain the total population at country level by aggregating the contribution from the metro level. Once calculated the same can be done to obtain the total population at continent level (this time feeding from the values previously calculated at country level).
 
-To do that it is just required to rely on the Graph´s API ´´´aggregateMessages´´´ and after that on ´´´joinVertices´´´ to obtain a new graph with the attribute population properly updated, see:
+To do that it is just required to rely on the Graph´s API ---aggregateMessages--- and after that on ---joinVertices--- to obtain a new graph with the attribute population properly updated, see:
 
 ```scala
 val countryLevelAggregated: VertexRDD[Vertex] = metroCountryContinentGraph.aggregateMessages[Vertex](
