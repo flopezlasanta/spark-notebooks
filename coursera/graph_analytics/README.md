@@ -40,13 +40,16 @@ To do that it is just required to rely on the Graph´s API `aggregateMessages` a
 
 ```scala
 val countriesAgg: VertexRDD[Vertex] = graph.aggregateMessages[Vertex](
-  t => { if (t.dstAttr.entity == "country") t.sendToDst(Vertex(t.dstAttr.name, t.srcAttr.population, t.dstAttr.entity)) },
-  (a, b) => Vertex(a.name, a.population + b.population, a.entity)
+  t => { // map function
+    if (t.dstAttr.entity == "country")
+      t.sendToDst(Vertex(t.dstAttr.name, t.srcAttr.population, t.dstAttr.entity))
+  },
+  (a, b) => Vertex(a.name, a.population + b.population, a.entity) // reduce function
 )
 val graphCountriesAgg = graph.joinVertices(countriesAgg)((id, a, b) => b) // here we are making a "replacement"
 ```
 
-*Disclaimer: To be honest I don´t know if this is the best way to calculate such aggregations thus in case you are aware of a better approach please make a comment, thanks!*
+*I don´t know if this is the best way to calculate such aggregations thus in case you are aware of a better approach please make a comment, thanks!*
 
 ### How To: Visualize Countries in a Map
 
