@@ -20,4 +20,24 @@ To **install GraphFrames** Spark Package follow the instructions described here:
 
 ```scala
 import org.graphframes._
+
+val metroCountryContinentGF = GraphFrame.fromGraphX(metroCountryContinentGraph)
 ```
+
+### How to aggregate population from metropolits level to continent level
+
+In the example mentioned there are 3 vertex types: metropolis, country, and continent. Population is given at metropolis level only. However each metro belongs to a country (is linked to), and each country to a continent (is linked to). Therefore it is feasible to obtain the total population at country level by aggregating the contribution from the metro level. Once calculated the same can be done to obtain the total population at continent level (this time feeding from the values previously calculated at country level).
+
+To do that it is just required to rely on the Graph´s API ´´´aggregateMessages´´´ and after that on ´´´joinVertices´´´ to obtain a new graph with the attribute population properly updated, see:
+
+```scala
+val countryLevelAggregated: VertexRDD[Vertex] = metroCountryContinentGraph.aggregateMessages[Vertex](
+  t => { if (t.dstAttr.entity == "country") t.sendToDst(Vertex(t.dstAttr.name, t.srcAttr.population, t.dstAttr.entity)) },
+  (a, b) => Vertex(a.name, a.population + b.population, a.entity)
+)
+val metroCountryAggContinentGraph = metroCountryContinentGraph.joinVertices(countryLevelAggregated)((id, a, b) => b)
+```
+
+## TODO
+
+[ ] Figure out how to display a map based on country codes (ISO 3); somehow Databricks reports the codes are not valid, but when running with PySpark everything works fine (fails when running with Scala)
