@@ -40,4 +40,4 @@ val metroCountryAggContinentGraph = metroCountryContinentGraph.joinVertices(coun
 
 ## TODO
 
-[] Figure out how to display a map based on country codes (ISO 3); somehow Databricks reports the codes are not valid, but when running with PySpark everything works fine (fails when running with Scala)
+- [ ] Figure out how to display a map based on country codes (ISO 3); somehow Databricks reports the codes are not valid, but when running with PySpark everything works fine (fails when running with Scala)
